@@ -1,0 +1,168 @@
+-- Hafta 1
+-- 1001 veya 1002 urunleri sirala
+ σ model=1001 ∨ model=1002 (Product)
+
+-- modelleri listele
+ π model (Product)
+
+-- Birlesim İslemi
+-- PC veya Laptop ureten ureticileri listeleyiniz
+ π maker (σ type='pc' ∨ type='laptop' (Product))
+
+-- ikinci yol
+π maker (σ type='pc' (Product)) ∪ π maker (σ type='laptop' (Product))
+
+-- Fark İslemi
+-- PC uretip laptop uretmeyen ureticileri bulduk
+π maker (σ type='pc' (Product)) - π maker (σ type='laptop' (Product))
+
+-- Hızı 3GHz uzerinde PC uretmeyen ureticileri bulunuz
+π model (σ type='pc' (Product)) - π model (σ speed>3 (PC))
+
+-- Hem pc hem de laptop ureten ureticileri bulunuz
+ π maker (σ type='pc' (Product)) ∩ π maker (σ type='laptop' (Product))
+ 
+ -- Ayni hiz ve fiyatta satilan laptop ve pc lerin ortak hiz ve fiyatlarini bulunuz
+π price, speed (PC) ∩ π price, speed (Laptop)
+
+-- Hızı 3GHz uzerinde PC uretmeyen ureticileri bulunuz
+PCHiz3 = π model (σ speed>3 (PC))
+π model (σ type='pc' (Product)) - PCHiz3
+
+-- Isimlendirme operatoru
+σ Product.type='pc' (Product)
+-- ρ urun (Product)
+σ urun.type='pc' (ρ urun (Product)) -- dogru kod
+σ Product.type='pc' (ρ urun (Product)) -- hatali kod
+
+-- Iliski alanlarinin isimlendirilmesi
+σ tur='pc' (ρ tur ← type (Product))
+σ Product.tur='pc' (ρ tur ← type (Product))
+
+-- ------------------------------------------------------------------------------------------
+
+-- Kartezyen Carpim
+Product x PC
+
+-- Urunlerin modeller bilgilerini urunlerle birlestiriniz
+σ Product.model=PC.model (Product x PC)
+
+-- A ureticisi tarafından uretilen PC'leirn fiyatlarini listeleyiniz
+π Product.maker, PC.price (σ Product.maker='A' σ Product.model=PC.model (Product x PC))
+
+-- Ikinci yol
+π Product.maker, PC.price (σ Product.model=PC.model ((σ Product.maker='A' (Product)) x PC))
+
+-- Hicbir ogrenci tarafindan alinmayan dersleri listeleyiniz
+π course_id (course) - π course_id (takes)
+
+-- 'Biology' bolumu tarafindan verilen dersleri alan ogrencileri listeleyiniz
+-- σ dept_name='Biology' (student) 
+-- ogrencide depertmant bilgisi olmasaydi
+ BioCourse = σ takes.course_id=course.course_id (takes x (σ course.dept_name='Biology' (course)))
+π student.name (σ takes.ID=student.ID (BioCourse x student))
+
+-- Alternatif cozum
+π student.name (σ takes.course_id=course.course_id ∧ takes.ID=student.ID ∧ course.dept_name='Biology' (course x takes x student))
+-- Kendi calistigi birim haric diger birimlerde acilmis bir dersi veren ogretim uyelerini listeleyiniz
+-- σ course.course_id = teaches.course_id ∧ teaches.ID = instructor.ID ∧ course.dept_name ≠ instructor.dept_name (teaches ⨯ course ⨯ instructor)
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+-- Hafta 2
+
+-- Bileşke
+-- Doğal Bileşke
+department ⨝ course
+
+-- Eşleniği
+σ department.dept_name = course.dept_name (department ⨯ course)
+
+-- Şartlı Bileşke(Teta Bileşke)
+department ⨝ (department.dept_name = course.dept_name) course
+
+-- Hangi öğrencinin hangi hocadan ders aldığını gösteriniz
+student_takes = student ⨝ (student.ID=takes.ID) takes
+teacher_teaches = instructor ⨝ (instructor.ID=teaches.ID) teaches
+tumu = student_takes ⨝ (takes.course_id=teaches.course_id) teacher_teaches
+sonuc = π student.name, instructor.name (tumu)
+sonuc
+
+-- Alternatif çözüm
+birlesim = student ⨝ (student.ID=takes.ID) takes ⨝ (takes.course_id= teaches.course_id)
+teaches ⨝ (instructor.ID=teaches.ID) instructor
+π student.ID,student.name,instructor.ID ,instructor.name (birlesim)
+
+-- Harici Bileşke
+
+-- Hocalar hangi öğrencilere danışmanlık yapmaktadır. Öğrencinin sadece ID'sini gösteriniz.
+π instructor.ID, instructor.name, advisor.i_id (instructor ⨝ instructor.ID=i_id advisor)
+
+-- Left outer join soldaki tüm kayıtları getirir ve sağdaki eşleşmeyen kayıtlara null atar
+π instructor.ID, instructor.name, advisor.s_id (instructor ⟕ instructor.ID=advisor.i_id advisor)
+
+-- Right outer join -- çalımıyor nedense
+π instructor.ID, instructor.name, advisor.s_id (advisor ⟖ advisor.i_id=instructor.ID instructor)
+
+-- Outer join kullanarak hiç ders vermeyen öğretim üyelerini bulunuz
+π instructor.name (σ teaches.ID = null (instructor ⟕ instructor.ID=teaches.ID teaches))
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+
+-- Hafta 3
+
+-- Bölme İşlemi
+
+-- 12345 nolu öğrenci	ile aynı dersleri alan öğrencileri listeleyiniz
+π ID, course_id (takes) ÷ π course_id (σ ID=12345 (takes))
+
+-- Eğer kişinin kendisi hariç bir arama yapılıyorsa
+all = π ID, course_id (takes) ÷ π course_id (σ ID=12345 (takes))
+σ ID≠12345 (all)
+
+-- İlişkisel set ile bölme işlminin gerçekleştirilmesi
+R = π ID, course_id (takes)
+R1 = π ID (takes)
+S = π course_id (σ ID=12345 (takes))
+RT = R1 x S
+R2 = RT - R
+T = R1 - π ID (R2)
+T
+
+-- Gruplama İşlemi
+γ count(*) → adet (instructor) -- NOT: anahtar yoksa tüm kaydı bir grup kabul eder. Tüm kaydı getirir
+
+-- Öğrencilerin (ID temelinde) kaçar adet ders aldığını bulduğunuz
+γ ID; count(course_id) → adet (takes)
+
+-- Öğretmenlerin kaçar adet ders verdiğini listeleyiniz
+γ ID; count(*) → adet (teaches) -- tüm kayıtları getirir *
+
+-- Öğretmenlerin isimlerini gösterere kaçar adet ders verdiğini listeleyiniz
+-- data_set = γ ID; count(course_id) → adet (teaches)
+-- π instructor.name, adet σ instructor.ID=teaches.ID (data_set x instructor)
+
+-- Hocanın çözümü
+γ instructor.ID, instructor.name; count(*) → adet (teaches ⨝ teaches.ID=instructor.ID instructor)
+
+-- Hocanın laternatif çözümü
+ogretmen_toplam_ders = (γ ID; count(*) → adet teaches)
+ogretmen_toplam_ders ⨝ teaches.ID=instructor.ID instructor
+-- NOT: gruplmama çok maaliyetli bir iştir. Bu yüzden önce grupla sonra işlemleri yap
+
+-- Biology departmanının verdiği dersleri alan öğrencilerin kredi ortalamalarını gösteriniz. (Her öğrencinin Biology departmanından ortalama kaç kredilik ders aldığını gösteriniz)
+-- γ takes.ID; count(*) → adet (takes ⨝ takes.course_id=course.course_id course ⨝ course.dept_name=department.dept_name σ dept_name='Biology' (department))
+γ takes.ID; avg(course.credits) → kredi_ort (takes ⨝ takes.course_id=course.course_id course ⨝ course.dept_name=department.dept_name σ dept_name='Biology' (department))
+
+-- En yüksek bütçeli birimin adını yazınız
+-- π department.dept_name, department.budget (department ⨝ department.budget=en (γ max(department.budget) → en (department)))
+en_yuksek = γ max(department.budget) → en (department)
+dep_en_yuksek = department ⨝ department.budget=en (en_yuksek)
+dep = π department.dept_name, department.budget (dep_en_yuksek)
+dep
+-- Bütçesi ortalamanın üzerinde olan birimlerin ismini yazınız
+-- π department.dept_name, department.budget (department ⨝ department.budget>ort (γ avg(department.budget) → ort (department)))
+ort_butce = γ avg(department.budget) → ort (department)
+ort_uzerinde = department ⨝ department.budget>ort (ort_butce)
+dep = π department.dept_name, department.budget (ort_uzerinde)
+dep
